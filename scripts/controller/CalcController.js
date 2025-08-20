@@ -1,5 +1,7 @@
 class CalcController {
   constructor() {
+    this._audio = new Audio("click.mp3");
+    this._audioOnOff = false;
     this._lastOperator = "";
     this._lastNumber = "";
 
@@ -10,8 +12,16 @@ class CalcController {
     this._timeEl = document.querySelector("#hora");
     this._currentDate;
     this.initialize();
-    this.initKeyboard();
     this.initButtonsEvents();
+    this.initKeyboard();
+  }
+
+  pasteFromClipboard() {
+    document.addEventListener("paste", (e) => {
+      let text = e.clipboardData.getData("Text");
+
+      this.displayCalc = parseFloat(text);
+    });
   }
 
   async copyToClipboard() {
@@ -26,16 +36,6 @@ class CalcController {
     input.remove();
   }
 
-  pasteFromClipboard() {
-    document.addEventListener("paste", (e) => {
-      let text = e.clipboardData.getData("Text");
-
-      this.displayCalc = parseFloat(text);
-
-      console.log(text);
-    });
-  }
-
   initialize() {
     this.setDisplayDateTime();
 
@@ -45,16 +45,29 @@ class CalcController {
 
     this.setLastNumberToDisplay();
     this.pasteFromClipboard();
+
+    document.querySelectorAll(".btn-ac").forEach((btn) => {
+      btn.addEventListener("dblclick", (e) => {
+        this.toggleAudio();
+      });
+    });
   }
 
-  addEventListenerAll(element, events, fn) {
-    events.split(" ").forEach((event) => {
-      element.addEventListener(event, fn, false);
-    });
+  toggleAudio() {
+    this._audioOnOff = !this._audioOnOff;
+  }
+
+  playAudio() {
+    if (this._audioOnOff) {
+      this._audio.currentTime = 0;
+      this._audio.play();
+    }
   }
 
   initKeyboard() {
     document.addEventListener("keyup", (e) => {
+      this.playAudio();
+
       switch (e.key) {
         case "Escape":
           this.clearAll();
@@ -66,8 +79,8 @@ class CalcController {
 
         case "+":
         case "-":
-        case "/":
         case "*":
+        case "/":
         case "%":
           this.addOperation(e.key);
           break;
@@ -96,11 +109,15 @@ class CalcController {
           break;
 
         case "c":
-          if (e.ctrlKey) {
-            this.copyToClipboard();
-          }
+          if (e.ctrlKey) this.copyToClipboard();
           break;
       }
+    });
+  }
+
+  addEventListenerAll(element, events, fn) {
+    events.split(" ").forEach((event) => {
+      element.addEventListener(event, fn, false);
     });
   }
 
@@ -139,7 +156,13 @@ class CalcController {
   }
 
   getResult() {
-    return eval(this._operation.join(""));
+    try {
+      return eval(this._operation.join(""));
+    } catch (e) {
+      setTimeout(() => {
+        this.setError();
+      }, 1);
+    }
   }
 
   calc() {
@@ -247,6 +270,8 @@ class CalcController {
   }
 
   execBtn(value) {
+    this.playAudio();
+
     switch (value) {
       case "ac":
         this.clearAll();
@@ -349,6 +374,12 @@ class CalcController {
   }
 
   set displayCalc(value) {
+    if (value.toString().length > 10) {
+      this.setError();
+
+      return false;
+    }
+
     this._displayCalcEl.innerHTML = value;
   }
 
